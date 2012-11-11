@@ -19,12 +19,12 @@ public class Xair extends AnimatedSprite{
 	private Body body;
 	
 	
-	public Xair(final float pX, final float pY,
+	public Xair(final double d, final double e,
 			final ITiledTextureRegion pTextureRegion,
 			final VertexBufferObjectManager pVertexBufferObjectManager,
 			TiledTextureRegion texture, PhysicsWorld physicsW, Scene scene,
 			EngineLock engineL){
-		super(pX, pY, pTextureRegion, pVertexBufferObjectManager);
+		super((float) d, (float) e, pTextureRegion, pVertexBufferObjectManager);
 		_texture = texture;
 		_physicsW = physicsW;
 		_scene = scene;

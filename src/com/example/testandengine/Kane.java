@@ -7,7 +7,9 @@ import org.andengine.audio.sound.Sound;
 import org.andengine.audio.sound.SoundFactory;
 import org.andengine.engine.Engine.EngineLock;
 import org.andengine.engine.camera.Camera;
+import org.andengine.engine.camera.hud.controls.DigitalOnScreenControl;
 import org.andengine.engine.handler.IUpdateHandler;
+import org.andengine.engine.handler.physics.PhysicsHandler;
 import org.andengine.engine.options.EngineOptions;
 import org.andengine.engine.options.ScreenOrientation;
 import org.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
@@ -86,10 +88,19 @@ IOnSceneTouchListener {
 	// Crosshair med texture
 	private Xair xAir;
 	private TiledTextureRegion xAirTexture;
-
+	private int xAirdegree = 45;
+	
+	
 	// Controls for xAir
 	private TiledTextureRegion UpBtnTexture;
 	private TiledTextureRegion DwnBtnTexture;
+	
+	// digital controls
+	private BitmapTextureAtlas mOnScreenControlTexture;
+	private ITextureRegion mOnScreenControlBaseTextureRegion;
+	private ITextureRegion mOnScreenControlKnobTextureRegion;
+
+	private DigitalOnScreenControl mDigitalOnScreenControl;
 	
 	public EngineOptions onCreateEngineOptions() {
 		final Camera camera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
@@ -176,6 +187,7 @@ IOnSceneTouchListener {
 		final AnimatedSprite upButton = new AnimatedSprite(680, 350, this.UpBtnTexture, vertexBufferObjectManager);
 		final AnimatedSprite dwnButton = new AnimatedSprite(680, 400, this.DwnBtnTexture, vertexBufferObjectManager);
 		
+	
 		player.setScaleCenterY(this.mPlayerTextureRegion.getHeight());
 		player.setScale(2);
 		player.animate(new long[]{200, 200, 200}, 0, 2, true);
@@ -187,6 +199,8 @@ IOnSceneTouchListener {
 		scene.attachChild(dwnButton);
 		
 		// 
+
+		
 		
 	//	new Arrow(100, 200, 0, scene, mPhysicsWorld, mBitmapTextureAtlas, this, vertexBufferObjectManager);
 	
@@ -213,19 +227,29 @@ IOnSceneTouchListener {
 //					Debug.log(DebugLevel.INFO, "Antall piler skutt: " + arrowList.size());
  
 				}
-			/*	if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(upButton)){
-					xAir.setY(xAir.getY() - 15);
-					xAir.setX(xAir.getX() - 10);
-					
+				if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(upButton)){
+
+					xAirdegree += 1;
+					xAir.setY((float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
+					xAir.setX((float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
+					Debug.log(DebugLevel.INFO, "Vinkel i grader er: " + xAirdegree);
+					Debug.log(DebugLevel.INFO, "X - verdi - Cosinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
+					Debug.log(DebugLevel.INFO, "Y - verdi - Sinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
+					Debug.log(DebugLevel.INFO, "min X - verdi - Cosinus er " + Math.cos(Math.toRadians(0)));
+					Debug.log(DebugLevel.INFO, "min Y - verdi - Sinus er " + Math.sin(Math.toRadians(0)));
 					
 				//	xAir.setX(pX)
 					// Flytt sikte i bue oppover & oppdater x+y
 				}
 				if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(dwnButton)){
-					xAir.setY(xAir.getY() + 15);
-					xAir.setX(xAir.getX() + 10);
+					xAirdegree -= 1;
+					xAir.setY((float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
+					xAir.setX((float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
+					Debug.log(DebugLevel.INFO, "Vinkel i grader er: " + xAirdegree);
+					Debug.log(DebugLevel.INFO, "X - verdi - Cosinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
+					Debug.log(DebugLevel.INFO, "Y - verdi - Sinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
 					// Flytt sikte i bue nedover & oppdater x+y
-				}*/
+				}
 				return true;
 				
 			}
@@ -317,7 +341,7 @@ IOnSceneTouchListener {
 	
 	private void createXair(){
 		
-		xAir = new Xair(100, 350, xAirTexture,getVertexBufferObjectManager(), arrowTexture,mPhysicsWorld, scene, engineLock);
+		xAir = new Xair(Math.cos(Math.toRadians(xAirdegree)) * 143, Math.sin(Math.toRadians(xAirdegree)) * 500, xAirTexture,getVertexBufferObjectManager(), arrowTexture,mPhysicsWorld, scene, engineLock);
 		scene.attachChild(xAir);
 		scene.registerUpdateHandler(xAir);
 		
