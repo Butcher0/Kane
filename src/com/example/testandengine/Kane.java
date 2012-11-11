@@ -7,12 +7,17 @@ import org.andengine.audio.sound.Sound;
 import org.andengine.audio.sound.SoundFactory;
 import org.andengine.engine.Engine.EngineLock;
 import org.andengine.engine.camera.Camera;
+import org.andengine.engine.camera.hud.controls.AnalogOnScreenControl;
+import org.andengine.engine.camera.hud.controls.AnalogOnScreenControl.IAnalogOnScreenControlListener;
+import org.andengine.engine.camera.hud.controls.BaseOnScreenControl;
 import org.andengine.engine.camera.hud.controls.DigitalOnScreenControl;
 import org.andengine.engine.handler.IUpdateHandler;
 import org.andengine.engine.handler.physics.PhysicsHandler;
 import org.andengine.engine.options.EngineOptions;
 import org.andengine.engine.options.ScreenOrientation;
 import org.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
+import org.andengine.entity.modifier.ScaleModifier;
+import org.andengine.entity.modifier.SequenceEntityModifier;
 import org.andengine.entity.primitive.Rectangle;
 import org.andengine.entity.scene.IOnAreaTouchListener;
 import org.andengine.entity.scene.IOnSceneTouchListener;
@@ -38,6 +43,7 @@ import org.andengine.util.debug.Debug;
 import org.andengine.util.debug.Debug.DebugLevel;
 
 import android.hardware.SensorManager;
+import android.opengl.GLES20;
 
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -88,7 +94,7 @@ IOnSceneTouchListener {
 	// Crosshair med texture
 	private Xair xAir;
 	private TiledTextureRegion xAirTexture;
-	private int xAirdegree = 45;
+	public Vector2 shoot = new Vector2();
 	
 	
 	// Controls for xAir
@@ -99,11 +105,13 @@ IOnSceneTouchListener {
 	private BitmapTextureAtlas mOnScreenControlTexture;
 	private ITextureRegion mOnScreenControlBaseTextureRegion;
 	private ITextureRegion mOnScreenControlKnobTextureRegion;
+	
 
 	private DigitalOnScreenControl mDigitalOnScreenControl;
+	final Camera camera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 	
 	public EngineOptions onCreateEngineOptions() {
-		final Camera camera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
+		
 
 		EngineOptions engineOptions = new EngineOptions(true, ScreenOrientation.LANDSCAPE_FIXED, new RatioResolutionPolicy(CAMERA_WIDTH, CAMERA_HEIGHT), camera);
 		engineOptions.getAudioOptions().setNeedsSound(true);
@@ -133,6 +141,11 @@ IOnSceneTouchListener {
 		this.mParallaxLayerMid = BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mAutoParallaxBackgroundTexture, this, "parallax_background_layer_mid.png", 0, 669);
 		
 		this.mAutoParallaxBackgroundTexture.load();
+		
+		this.mOnScreenControlTexture = new BitmapTextureAtlas(this.getTextureManager(), 256, 128, TextureOptions.BILINEAR);
+		this.mOnScreenControlBaseTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mOnScreenControlTexture, this, "onscreen_control_base.png", 0, 0);
+		this.mOnScreenControlKnobTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mOnScreenControlTexture, this, "onscreen_control_knob.png", 128, 0);
+		this.mOnScreenControlTexture.load();
 		engineLock = this.mEngine.getEngineLock();
 		
 		// Soundeffects
@@ -186,19 +199,44 @@ IOnSceneTouchListener {
 		final AnimatedSprite fireButton = new AnimatedSprite(550, 420, this.mFireButtonTexureRegion, vertexBufferObjectManager);
 		final AnimatedSprite upButton = new AnimatedSprite(680, 350, this.UpBtnTexture, vertexBufferObjectManager);
 		final AnimatedSprite dwnButton = new AnimatedSprite(680, 400, this.DwnBtnTexture, vertexBufferObjectManager);
+		final Sprite xAirSprite = new AnimatedSprite(350, 200, this.xAirTexture, vertexBufferObjectManager);
 		
 	
 		player.setScaleCenterY(this.mPlayerTextureRegion.getHeight());
 		player.setScale(2);
 		player.animate(new long[]{200, 200, 200}, 0, 2, true);
 		createXair();
+		
+		final PhysicsHandler physicsHandler = new PhysicsHandler(xAirSprite);
+		xAirSprite.registerUpdateHandler(physicsHandler);
 
 		scene.attachChild(player);
 		scene.attachChild(fireButton);
 		scene.attachChild(upButton);
 		scene.attachChild(dwnButton);
+		scene.attachChild(xAirSprite);
 		
 		// 
+		final AnalogOnScreenControl analogOnScreenControl = new AnalogOnScreenControl(350, CAMERA_HEIGHT - this.mOnScreenControlBaseTextureRegion.getHeight(), camera, this.mOnScreenControlBaseTextureRegion, this.mOnScreenControlKnobTextureRegion, 0.1f, 200, this.getVertexBufferObjectManager(), new IAnalogOnScreenControlListener() {
+			public void onControlChange(final BaseOnScreenControl pBaseOnScreenControl, final float pValueX, final float pValueY) {
+				physicsHandler.setVelocity(pValueX * 125, pValueY * 125);
+				shoot.set(25 - xAirSprite.getX(),425 - xAirSprite.getY());
+				//shoot.set(pValueX * 125, pValueY * 125);//= pValueX * 125;
+				//shoot.y = pValueY * 125;
+			}
+
+			public void onControlClick(final AnalogOnScreenControl pAnalogOnScreenControl) {
+				xAirSprite.registerEntityModifier(new SequenceEntityModifier(new ScaleModifier(0.25f, 1, 1.5f), new ScaleModifier(0.25f, 1.5f, 1)));
+			}
+		});
+		analogOnScreenControl.getControlBase().setBlendFunction(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+		analogOnScreenControl.getControlBase().setAlpha(0.5f);
+		analogOnScreenControl.getControlBase().setScaleCenter(0, 128);
+		analogOnScreenControl.getControlBase().setScale(1);
+		analogOnScreenControl.getControlKnob().setScale(1);
+		analogOnScreenControl.refreshControlKnobPosition();
+
+		scene.setChildScene(analogOnScreenControl);
 
 		
 		
@@ -227,32 +265,8 @@ IOnSceneTouchListener {
 //					Debug.log(DebugLevel.INFO, "Antall piler skutt: " + arrowList.size());
  
 				}
-				if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(upButton)){
-
-					xAirdegree += 1;
-					xAir.setY((float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
-					xAir.setX((float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
-					Debug.log(DebugLevel.INFO, "Vinkel i grader er: " + xAirdegree);
-					Debug.log(DebugLevel.INFO, "X - verdi - Cosinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
-					Debug.log(DebugLevel.INFO, "Y - verdi - Sinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
-					Debug.log(DebugLevel.INFO, "min X - verdi - Cosinus er " + Math.cos(Math.toRadians(0)));
-					Debug.log(DebugLevel.INFO, "min Y - verdi - Sinus er " + Math.sin(Math.toRadians(0)));
-					
-				//	xAir.setX(pX)
-					// Flytt sikte i bue oppover & oppdater x+y
-				}
-				if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(dwnButton)){
-					xAirdegree -= 1;
-					xAir.setY((float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
-					xAir.setX((float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
-					Debug.log(DebugLevel.INFO, "Vinkel i grader er: " + xAirdegree);
-					Debug.log(DebugLevel.INFO, "X - verdi - Cosinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 150));
-					Debug.log(DebugLevel.INFO, "Y - verdi - Sinus er " + (float) (Math.cos(Math.toRadians(xAirdegree)) * 450));
-					// Flytt sikte i bue nedover & oppdater x+y
-				}
 				return true;
-				
-			}
+				}
 		});
 		
 		scene.registerUpdateHandler(new IUpdateHandler(){
@@ -341,9 +355,9 @@ IOnSceneTouchListener {
 	
 	private void createXair(){
 		
-		xAir = new Xair(Math.cos(Math.toRadians(xAirdegree)) * 143, Math.sin(Math.toRadians(xAirdegree)) * 500, xAirTexture,getVertexBufferObjectManager(), arrowTexture,mPhysicsWorld, scene, engineLock);
-		scene.attachChild(xAir);
-		scene.registerUpdateHandler(xAir);
+	//	xAir = new Xair(Math.cos(Math.toRadians(xAirdegree)) * 143, Math.sin(Math.toRadians(xAirdegree)) * 500, xAirTexture,getVertexBufferObjectManager(), arrowTexture,mPhysicsWorld, scene, engineLock);
+	//	scene.attachChild(xAir);
+	//	scene.registerUpdateHandler(xAir);
 		
 	}
 
@@ -361,7 +375,12 @@ IOnSceneTouchListener {
 		body = PhysicsFactory.createBoxBody(mPhysicsWorld, arrowShape, BodyType.DynamicBody, FIXTURE_DEF);
 
 		a.setbody(body);
-		body.setLinearVelocity(100f, -50f);
+	//	body.setLinearVelocity(100f, -50f);
+		shoot = shoot.nor().mul(-20);
+		body.setLinearVelocity(shoot);
+		Debug.log(DebugLevel.INFO, "X er no " + shoot.x);
+		Debug.log(DebugLevel.INFO, "Y er no " + shoot.y);
+		
 		body.setTransform(body.getWorldCenter(), 100);
 		
 		scene.attachChild(a);
