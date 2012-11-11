@@ -82,7 +82,14 @@ IOnSceneTouchListener {
 	// Duck med textures
 	private Duck duck;
 	private TiledTextureRegion duckTexture;
+	
+	// Crosshair med texture
+	private Xair xAir;
+	private TiledTextureRegion xAirTexture;
 
+	// Controls for xAir
+	private TiledTextureRegion UpBtnTexture;
+	private TiledTextureRegion DwnBtnTexture;
 	
 	public EngineOptions onCreateEngineOptions() {
 		final Camera camera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
@@ -98,11 +105,15 @@ IOnSceneTouchListener {
 	public void onCreateResources() {
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		
-		this.mBitmapTextureAtlas = new BitmapTextureAtlas(this.getTextureManager(), 512, 256, TextureOptions.DEFAULT);
+		this.mBitmapTextureAtlas = new BitmapTextureAtlas(this.getTextureManager(), 1024, 512, TextureOptions.DEFAULT);
 		this.mPlayerTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "minplayer.png", 0, 0, 3, 2);
 		this.mFireButtonTexureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "firebutton.png", 73, 0, 1, 1);
 		this.arrowTexture = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "arrow.png", 0, 72, 1, 1);
 		this.duckTexture = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "duck.png", 0, 144, 2, 2);
+		this.xAirTexture = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "xair.png", 146, 0, 1, 1);
+		// 2 textures for controls av xAir
+		this.UpBtnTexture = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "xairUp.png", 146, 229, 1, 1);
+		this.DwnBtnTexture = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(this.mBitmapTextureAtlas, this, "xairDown.png", 146, 266, 1, 1);
 		this.mBitmapTextureAtlas.load();
 
 		this.mAutoParallaxBackgroundTexture = new BitmapTextureAtlas(this.getTextureManager(), 1024, 1024);
@@ -162,13 +173,18 @@ IOnSceneTouchListener {
 		/* Create two sprits and add it to the scene. */
 		final AnimatedSprite player = new AnimatedSprite(playerX, playerY, this.mPlayerTextureRegion, vertexBufferObjectManager);
 		final AnimatedSprite fireButton = new AnimatedSprite(550, 420, this.mFireButtonTexureRegion, vertexBufferObjectManager);
+		final AnimatedSprite upButton = new AnimatedSprite(680, 350, this.UpBtnTexture, vertexBufferObjectManager);
+		final AnimatedSprite dwnButton = new AnimatedSprite(680, 400, this.DwnBtnTexture, vertexBufferObjectManager);
 		
 		player.setScaleCenterY(this.mPlayerTextureRegion.getHeight());
 		player.setScale(2);
 		player.animate(new long[]{200, 200, 200}, 0, 2, true);
+		createXair();
 
 		scene.attachChild(player);
 		scene.attachChild(fireButton);
+		scene.attachChild(upButton);
+		scene.attachChild(dwnButton);
 		
 		// 
 		
@@ -177,9 +193,12 @@ IOnSceneTouchListener {
 
 		
 		scene.registerTouchArea(fireButton);
+		
+		scene.registerTouchArea(upButton);
+		scene.registerTouchArea(dwnButton);
 		scene.setOnAreaTouchListener(new IOnAreaTouchListener() {
 			public boolean onAreaTouched(final TouchEvent pSceneTouchEvent, final ITouchArea pTouchArea, final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-				if(pSceneTouchEvent.isActionDown()) {
+				if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(fireButton)) {
 					Kane.this.arrowShootSnd.play();
 						
 //					Arrow arrow = new Arrow(25, 425, 0, scene, mPhysicsWorld, mBitmapTextureAtlas, Kane.this, vertexBufferObjectManager);
@@ -192,8 +211,21 @@ IOnSceneTouchListener {
 //					Debug.log(DebugLevel.INFO, "X er no " + arrow.getxVal());
 //					Debug.log(DebugLevel.INFO, "Y er no " + arrow.getyVal());
 //					Debug.log(DebugLevel.INFO, "Antall piler skutt: " + arrowList.size());
-
+ 
 				}
+			/*	if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(upButton)){
+					xAir.setY(xAir.getY() - 15);
+					xAir.setX(xAir.getX() - 10);
+					
+					
+				//	xAir.setX(pX)
+					// Flytt sikte i bue oppover & oppdater x+y
+				}
+				if(pSceneTouchEvent.isActionDown() && pTouchArea.equals(dwnButton)){
+					xAir.setY(xAir.getY() + 15);
+					xAir.setX(xAir.getX() + 10);
+					// Flytt sikte i bue nedover & oppdater x+y
+				}*/
 				return true;
 				
 			}
@@ -281,6 +313,14 @@ IOnSceneTouchListener {
 			}
 		});
 
+	}
+	
+	private void createXair(){
+		
+		xAir = new Xair(100, 350, xAirTexture,getVertexBufferObjectManager(), arrowTexture,mPhysicsWorld, scene, engineLock);
+		scene.attachChild(xAir);
+		scene.registerUpdateHandler(xAir);
+		
 	}
 
 
